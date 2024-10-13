@@ -1,17 +1,14 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use axum::extract::State;
+use axum::http::StatusCode;
+use axum::response::Response;
 use axum::serve;
 use serde_json::json;
 
-mod config;
-mod model;
-mod ollama;
-
-use crate::config::{check_model_name, Config};
-use crate::model::{LLMProvider, Model};
-use crate::ollama::ChatRequest;
+use lumos::config::{check_model_name, Config};
+use lumos::define::{ChatRequest, ProviderName};
 
 use axum::{
     response::{IntoResponse, Json},
@@ -97,16 +94,31 @@ async fn chat(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ChatRequest>,
 ) -> impl IntoResponse {
-    let model = select_model(&state.model_name, &state.config_path);
+    match _chat(state, req).await {
+        Ok(response) => response.into_response(),
+        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
+    }
 }
 
-// Get the model information from the configuration file
-async fn select_model(model_name: &str, config_path: &str) -> Option<Model> {
-    let config = Config::from_file(config_path).ok()?;
-    let model_config = config.models.get(model_name)?;
+async fn _chat(state: Arc<AppState>, req: ChatRequest) -> anyhow::Result<Response> {
+    let model_name = &state.model_name;
+    let config_path = &state.config_path;
 
-    match model_config.provider {
-        LLMProvider::OpenAI => None,
-        LLMProvider::DeepSeek => None,
+    let config = Config::from_file(config_path).context("无法加载配置文件")?;
+    let model_config = config.models.get(model_name);
+
+    match model_config {
+        Some(provider) => match provider.name {
+            ProviderName::OpenAI => {
+                todo!()
+            }
+            ProviderName::DeepSeek => {
+                todo!()
+            }
+        },
+        None => {
+            let error_message = format!("错误：未找到模型 {} 的提供者", model_name);
+            Err(anyhow::anyhow!(error_message))
+        }
     }
 }

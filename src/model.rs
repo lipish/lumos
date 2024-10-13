@@ -3,22 +3,6 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde_json::{json, Value};
 
-pub enum LLMProvider {
-    OpenAI,
-    DeepSeek,
-}
-
-struct ProviderConfig {
-    provider: LLMProvider,
-    api_key: String,
-    url: String,
-}
-
-pub struct Model {
-    name: String,
-    provider_config: ProviderConfig,
-}
-
 pub fn list_models(model_name: &str) -> Result<Value, anyhow::Error> {
     let model_data = json!({
         "name": parse_model_name(model_name),
