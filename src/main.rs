@@ -8,14 +8,17 @@ use axum::serve;
 use serde_json::json;
 
 use lumos::config::{check_model_name, Config};
-use lumos::define::{ChatRequest, ProviderName};
+use lumos::define::ChatRequest;
+use lumos::service::sendto_service;
 
+use axum::body::StreamBody;
 use axum::{
     response::{IntoResponse, Json},
     routing::{get, post},
     Router,
 };
 use clap::Parser;
+use futures_util::StreamExt;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
@@ -57,8 +60,6 @@ async fn main() -> Result<()> {
         );
         std::process::exit(1);
     }
-
-    let config = Config::from_file(&cli.config_file)?;
 
     // Save the model name and config path in the app state
     let app_state = Arc::new(AppState {
@@ -105,20 +106,19 @@ async fn _chat(state: Arc<AppState>, req: ChatRequest) -> anyhow::Result<Respons
     let config_path = &state.config_path;
 
     let config = Config::from_file(config_path).context("无法加载配置文件")?;
-    let model_config = config.models.get(model_name);
+    let provider = config.models.get(model_name).context("未找到模型提供者")?;
 
-    match model_config {
-        Some(provider) => match provider.name {
-            ProviderName::OpenAI => {
-                todo!()
-            }
-            ProviderName::DeepSeek => {
-                todo!()
-            }
-        },
-        None => {
-            let error_message = format!("错误：未找到模型 {} 的提供者", model_name);
-            Err(anyhow::anyhow!(error_message))
-        }
-    }
+    // 发送请求到云模型服务并获取流
+    let stream = sendto_service(provider, req).await?;
+
+    // 将流转换为 StreamBody
+    let body = StreamBody::new(stream.map(|result| result.map(|chunk| chunk.into_bytes())));
+
+    // 创建响应
+    let response = Response::builder()
+        .header("Content-Type", "text/plain")
+        .body(body)
+        .unwrap();
+
+    Ok(response)
 }
