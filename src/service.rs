@@ -1,33 +1,12 @@
 use crate::define::ChatRequest;
 use crate::define::Provider;
-use crate::define::ProviderName;
-use futures_util::future::FutureExt;
-use futures_util::stream::BoxStream;
 use futures_util::Stream;
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde_json::json;
 use serde_json::Value;
 
-// A function that takes Provider Information and return a stream response
-pub async fn sendto_service(
-    provider: &Provider,
-    req: ChatRequest,
-) -> Result<Box<dyn Stream<Item = Result<String, anyhow::Error>> + Unpin>, anyhow::Error> {
-    match provider.name {
-        ProviderName::GLM => Ok(Box::new(glm(req).await?)),
-        ProviderName::DeepSeek => Ok(Box::new(deepseek(req, provider).await?)),
-    }
-}
-
-async fn glm(
-    req: ChatRequest,
-) -> Result<BoxStream<'static, Result<String, anyhow::Error>>, anyhow::Error> {
-    println!("request: {:?}", req);
-    todo!()
-}
-
-async fn deepseek(
+pub async fn send(
     req: ChatRequest,
     provider: &Provider,
 ) -> Result<impl Stream<Item = Result<String, anyhow::Error>> + Unpin, anyhow::Error> {
@@ -102,4 +81,49 @@ async fn deepseek(
         });
 
     Ok(stream)
+}
+
+// Test deepseek
+#[tokio::test]
+async fn test_deepseek() -> Result<(), anyhow::Error> {
+    use crate::config::Config;
+    use crate::define::{ChatMessage, ChatRequest};
+    use anyhow::Context;
+
+    // read api key from keys.toml
+    let config_path = "keys.toml";
+    println!("config_path: {}", config_path);
+    let config = Config::from_file(config_path)?;
+    println!("config: {:?}", config);
+
+    let provider = config
+        .models
+        .get("deepseek-chat")
+        .context("未找到模型提供者")?;
+
+    let req = ChatRequest {
+        model: "deepseek-chat".to_string(),
+        messages: vec![ChatMessage {
+            role: "user".to_string(),
+            content: "Hello, how are you?".to_string(),
+            images: None,
+            tool_calls: None,
+        }],
+        stream: true,
+        ..Default::default()
+    };
+
+    let stream = send(req, &provider).await?;
+
+    let lines = stream.collect::<Vec<_>>().await;
+
+    // print the first 5 lines
+    for line in lines.iter().take(5) {
+        println!("{:?}", line);
+    }
+
+    assert!(lines.len() > 1);
+    assert!(lines[0].as_ref().unwrap().contains("Hello"));
+
+    Ok(())
 }

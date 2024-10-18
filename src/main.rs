@@ -9,16 +9,15 @@ use serde_json::json;
 
 use lumos::config::{check_model_name, Config};
 use lumos::define::ChatRequest;
-use lumos::service::sendto_service;
+use lumos::service::send;
 
-use axum::body::StreamBody;
 use axum::{
+    body::Body,
     response::{IntoResponse, Json},
     routing::{get, post},
     Router,
 };
 use clap::Parser;
-use futures_util::StreamExt;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
@@ -105,14 +104,18 @@ async fn _chat(state: Arc<AppState>, req: ChatRequest) -> anyhow::Result<Respons
     let model_name = &state.model_name;
     let config_path = &state.config_path;
 
-    let config = Config::from_file(config_path).context("无法加载配置文件")?;
+    let config = Config::from_file(config_path)?;
+    println!("_chat from file{:?}", config);
+
     let provider = config.models.get(model_name).context("未找到模型提供者")?;
 
     // 发送请求到云模型服务并获取流
-    let stream = sendto_service(provider, req).await?;
+    let stream = send(req, provider).await?;
 
-    // 将流转换为 StreamBody
-    let body = StreamBody::new(stream.map(|result| result.map(|chunk| chunk.into_bytes())));
+    // 将流转换为 Body
+    let body = Body::from_stream(stream);
+
+    // let body = StreamBody::new(stream.map(|result| result.map(|chunk| chunk.into_bytes())));
 
     // 创建响应
     let response = Response::builder()
