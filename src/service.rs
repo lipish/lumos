@@ -1,5 +1,5 @@
-use crate::define::ChatRequest;
-use crate::define::Provider;
+use crate::structs::config::Provider;
+use crate::structs::ollama::Message;
 use futures_util::Stream;
 use futures_util::StreamExt;
 use reqwest::Client;
@@ -7,12 +7,12 @@ use serde_json::json;
 use serde_json::Value;
 
 pub async fn send(
-    req: ChatRequest,
+    model: &str,
+    messages: Vec<Message>,
     provider: &Provider,
 ) -> Result<impl Stream<Item = Result<String, anyhow::Error>> + Unpin, anyhow::Error> {
     let api_key = &provider.api_key;
-    let messages = req
-        .messages
+    let messages = messages
         .into_iter()
         .map(|msg| {
             json!({
@@ -21,7 +21,7 @@ pub async fn send(
             })
         })
         .collect::<Vec<_>>();
-    let model = &req.model;
+    let model = &model;
 
     let client = Client::new();
 

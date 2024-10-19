@@ -1,14 +1,14 @@
+use anyhow::Result;
 use std::collections::HashMap;
 use std::fs;
 
-use crate::define::Provider;
-
-use anyhow::Result;
 use serde::Deserialize;
+
+use crate::structs::config::Provider;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    #[serde(flatten)] // Important: allows for arbitrary model names as keys
+    #[serde(flatten)]
     pub models: HashMap<String, Provider>,
 }
 

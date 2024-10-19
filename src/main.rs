@@ -1,31 +1,23 @@
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::Response;
 use axum::serve;
 use serde_json::json;
 
-use lumos::config::{check_model_name, Config};
-use lumos::define::ChatRequest;
-use lumos::service::send;
+use lumos::config::check_model_name;
+use lumos::ollama::chat::handler as chat;
+use lumos::ollama::generate::handler as generate;
 
 use axum::{
-    body::Body,
-    response::{IntoResponse, Json},
+    response::Json,
     routing::{get, post},
     Router,
 };
 use clap::Parser;
+use lumos::structs::app::AppState;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
-
-#[derive(Clone)]
-struct AppState {
-    model_name: String,
-    config_path: String,
-}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -70,6 +62,7 @@ async fn main() -> Result<()> {
         .route("/api/chat", post(chat))
         .route("/api/tags", get(list_model))
         .route("/api/ping", get(ping))
+        .route("/api/generate", post(generate))
         .with_state(app_state)
         .layer(CorsLayer::new().allow_origin(Any));
 
@@ -88,38 +81,4 @@ async fn list_model(State(state): State<Arc<AppState>>) -> Json<serde_json::Valu
 
 async fn ping(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
     Json(json!({"model_name": state.model_name.clone()}))
-}
-
-async fn chat(
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<ChatRequest>,
-) -> impl IntoResponse {
-    match _chat(state, req).await {
-        Ok(response) => response.into_response(),
-        Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
-    }
-}
-
-async fn _chat(state: Arc<AppState>, req: ChatRequest) -> anyhow::Result<Response> {
-    let model_name = &state.model_name;
-    let config_path = &state.config_path;
-
-    let config = Config::from_file(config_path)?;
-    println!("_chat from file{:?}", config);
-
-    let provider = config.models.get(model_name).context("未找到模型提供者")?;
-
-    // 发送请求到云模型服务并获取流
-    let stream = send(req, provider).await?;
-
-    // 将流转换为 Body
-    let body = Body::from_stream(stream);
-
-    // 创建响应
-    let response = Response::builder()
-        .header("Content-Type", "text/plain")
-        .body(body)
-        .unwrap();
-
-    Ok(response)
 }

@@ -1,8 +1,8 @@
 use anyhow::Context;
 use futures_util::StreamExt;
 use lumos::config::Config;
-use lumos::define::{ChatMessage, ChatRequest};
 use lumos::service::send;
+use lumos::structs::ollama::{ChatRequest, Message};
 
 #[tokio::test]
 async fn test_models() -> Result<(), anyhow::Error> {
@@ -22,7 +22,7 @@ async fn test_models() -> Result<(), anyhow::Error> {
 
         let req = ChatRequest {
             model: model_name.to_string(),
-            messages: vec![ChatMessage {
+            messages: vec![Message {
                 role: "user".to_string(),
                 content: prompt.to_string(),
                 images: None,
@@ -32,7 +32,7 @@ async fn test_models() -> Result<(), anyhow::Error> {
             ..Default::default()
         };
 
-        let mut stream = send(req, provider).await?;
+        let mut stream = send(model_name, req.messages, provider).await?;
 
         let mut collected_chunks = Vec::new();
         while let Some(result) = stream.next().await {
