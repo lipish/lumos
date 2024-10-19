@@ -92,9 +92,7 @@ async fn test_deepseek() -> Result<(), anyhow::Error> {
 
     // read api key from keys.toml
     let config_path = "keys.toml";
-    println!("config_path: {}", config_path);
     let config = Config::from_file(config_path)?;
-    println!("config: {:?}", config);
 
     let provider = config
         .models
@@ -117,9 +115,9 @@ async fn test_deepseek() -> Result<(), anyhow::Error> {
 
     let lines = stream.collect::<Vec<_>>().await;
 
-    // print the first 5 lines
-    for line in lines.iter().take(5) {
-        println!("{:?}", line);
+    // print the first 10 lines
+    for line in lines.iter().take(10) {
+        println!("reply{:?}", line);
     }
 
     assert!(lines.len() > 1);
