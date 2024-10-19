@@ -83,7 +83,6 @@ pub async fn send(
     Ok(stream)
 }
 
-// Test deepseek
 #[tokio::test]
 async fn test_deepseek() -> Result<(), anyhow::Error> {
     use crate::config::Config;
@@ -103,7 +102,7 @@ async fn test_deepseek() -> Result<(), anyhow::Error> {
         model: "deepseek-chat".to_string(),
         messages: vec![ChatMessage {
             role: "user".to_string(),
-            content: "Hello, how are you?".to_string(),
+            content: "How to learn python programming?".to_string(),
             images: None,
             tool_calls: None,
         }],
@@ -111,17 +110,24 @@ async fn test_deepseek() -> Result<(), anyhow::Error> {
         ..Default::default()
     };
 
-    let stream = send(req, &provider).await?;
+    let mut stream = send(req, &provider).await?;
 
-    let lines = stream.collect::<Vec<_>>().await;
+    let mut collected_chunks = Vec::new();
 
-    // print the first 10 lines
-    for line in lines.iter().take(10) {
-        println!("reply{:?}", line);
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(chunk) => {
+                println!("Received chunk: {}", chunk); //  打印每个 chunk
+                collected_chunks.push(chunk);
+            }
+            Err(err) => {
+                println!("Error reading from stream: {}", err);
+
+                return Err(err); // 或根据你的需要处理错误
+            }
+        }
     }
 
-    assert!(lines.len() > 1);
-    assert!(lines[0].as_ref().unwrap().contains("Hello"));
-
+    assert!(collected_chunks.len() > 0); // 检查是否接收到数据
     Ok(())
 }

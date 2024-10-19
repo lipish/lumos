@@ -115,8 +115,6 @@ async fn _chat(state: Arc<AppState>, req: ChatRequest) -> anyhow::Result<Respons
     // 将流转换为 Body
     let body = Body::from_stream(stream);
 
-    // let body = StreamBody::new(stream.map(|result| result.map(|chunk| chunk.into_bytes())));
-
     // 创建响应
     let response = Response::builder()
         .header("Content-Type", "text/plain")
