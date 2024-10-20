@@ -3,9 +3,9 @@ use std::sync::Arc;
 use axum::extract::State;
 use serde_json::json;
 
-use crate::ollama::chat::handler as chat;
-use crate::ollama::generate::handler as generate;
-use crate::ollama::tags::models;
+use crate::ollama::chat_handler as chat;
+use crate::ollama::generate_handler as generate;
+use crate::ollama::models;
 
 use crate::structs::app::AppState;
 use axum::{

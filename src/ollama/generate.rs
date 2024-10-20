@@ -6,7 +6,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::config::Config;
-use crate::ollama::dispatch::dispatch;
+use crate::ollama::dispatch;
 use crate::structs::app::AppState;
 use crate::structs::ollama::GenerateRequest;
 use crate::structs::ollama::Message;
@@ -20,17 +20,19 @@ pub async fn handler(
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
-pub async fn generate(
+async fn generate(
     State(state): State<Arc<AppState>>,
     Json(req): Json<GenerateRequest>,
 ) -> Result<impl IntoResponse, anyhow::Error> {
-    let model = &state.model_name;
+    let model_name = &state.model_name;
     let config_path = &state.config_path;
 
     let config = Config::from_file(config_path).context("Failed to load config")?;
-    let provider = config.models.get(model).context("Provider not found")?;
+    let provider = config
+        .models
+        .get(model_name)
+        .context("Provider not found")?;
 
-    // Construct the messages from prompt and suffix
     let messages = vec![Message {
         role: "user".to_string(),
         content: req.prompt.unwrap(),
@@ -38,5 +40,5 @@ pub async fn generate(
     }];
 
     // Dispatch the request to the provider service and get the stream
-    dispatch(model, messages, provider).await
+    dispatch(model_name, messages, provider, None, None).await
 }

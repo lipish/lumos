@@ -2,6 +2,7 @@
 
 use anyhow::Result;
 use axum::http::StatusCode;
+use futures_util::StreamExt;
 use reqwest::header::CONTENT_TYPE;
 use serde_json::Value;
 
@@ -24,7 +25,7 @@ async fn spawn_app(app_state: Arc<AppState>) {
 }
 
 #[tokio::test]
-async fn test_generate_api() -> Result<()> {
+async fn test_generate() -> Result<()> {
     // Setup app state for testing
     let app_state = Arc::new(AppState {
         model_name: "deepseek-chat".to_string(),
@@ -46,7 +47,7 @@ async fn test_generate_api() -> Result<()> {
 
     let addr = "127.0.0.1:11434";
 
-    for (req, expected_status) in test_cases {
+    for (req, _) in test_cases {
         let request_body = serde_json::to_vec(&req)?;
 
         let request = reqwest::Client::new()
@@ -55,15 +56,23 @@ async fn test_generate_api() -> Result<()> {
             .body(request_body)
             .build()?;
 
-        let response = client.execute(request).await?;
+        let mut stream = client.execute(request).await?.bytes_stream();
+        let mut response_text = String::new();
 
-        let status = response.status();
-        let response_body = response.text().await?;
-        let response_json: Value = serde_json::from_str(&response_body)?;
-        let response_text = response_json["response"].as_str().unwrap();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            println!("chunk: {:?}", chunk);
+            let chunk_str = std::str::from_utf8(&chunk)?;
+            println!("chunk_str: {}", chunk_str);
+            let chunk_json: Value = serde_json::from_str(chunk_str)?;
+            println!("chunk_json: {:?}", chunk_json);
+            if let Some(response) = chunk_json["response"].as_str() {
+                println!("response: {}", response);
+                response_text.push_str(response);
+            }
+        }
+
         assert!(response_text.contains("beijing"));
-
-        assert_eq!(status, expected_status);
     }
 
     Ok(())

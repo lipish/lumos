@@ -6,7 +6,7 @@ use axum::{
 use std::sync::Arc;
 
 use crate::config::Config;
-use crate::ollama::dispatch::dispatch;
+use crate::ollama::dispatch;
 use crate::structs::app::AppState;
 use crate::structs::ollama::ChatRequest;
 
@@ -19,7 +19,7 @@ pub async fn handler(
         .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
-pub async fn chat(
+async fn chat(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ChatRequest>,
 ) -> Result<impl IntoResponse, anyhow::Error> {
@@ -30,5 +30,5 @@ pub async fn chat(
     let provider = config.models.get(model).context("Provider not found")?;
 
     // Dispatch the request to the provider service and get the stream
-    dispatch(model, req.messages, provider).await
+    dispatch(model, req.messages, provider, None, None).await
 }

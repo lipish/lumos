@@ -44,7 +44,7 @@ impl Default for GenerateRequest {
             system: None,
             template: None,
             context: None,
-            stream: false,
+            stream: true,
             raw: false,
             keep_alive: None,
         }
