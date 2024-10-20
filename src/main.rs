@@ -1,22 +1,13 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use axum::extract::State;
 use axum::serve;
-use serde_json::json;
 
+use lumos::app::create_app;
 use lumos::config::check_model_name;
-use lumos::ollama::chat::handler as chat;
-use lumos::ollama::generate::handler as generate;
 
-use axum::{
-    response::Json,
-    routing::{get, post},
-    Router,
-};
 use clap::Parser;
 use lumos::structs::app::AppState;
-use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 
 #[derive(Parser, Debug)]
@@ -58,13 +49,7 @@ async fn main() -> Result<()> {
         config_path: cli.config_file,
     });
 
-    let app = Router::new()
-        .route("/api/chat", post(chat))
-        .route("/api/tags", get(list_model))
-        .route("/api/ping", get(ping))
-        .route("/api/generate", post(generate))
-        .with_state(app_state)
-        .layer(CorsLayer::new().allow_origin(Any));
+    let app = create_app(app_state).await;
 
     let addr = format!("{}:{}", cli.host, cli.port);
     info!("listening on {}", addr);
@@ -73,12 +58,4 @@ async fn main() -> Result<()> {
     serve(listener, app.into_make_service()).await?;
 
     Ok(())
-}
-
-async fn list_model(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    Json(json!({"model_name": state.model_name.clone()}))
-}
-
-async fn ping(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
-    Json(json!({"model_name": state.model_name.clone()}))
 }

@@ -32,6 +32,25 @@ pub struct GenerateRequest {
     pub keep_alive: Option<String>,
 }
 
+impl Default for GenerateRequest {
+    fn default() -> Self {
+        GenerateRequest {
+            model: String::new(),
+            prompt: None,
+            suffix: None,
+            images: None,
+            format: None,
+            options: None,
+            system: None,
+            template: None,
+            context: None,
+            stream: false,
+            raw: false,
+            keep_alive: None,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ChatRequest {
     pub model: String,
