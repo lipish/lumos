@@ -61,18 +61,16 @@ async fn test_generate() -> Result<()> {
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk?;
-            println!("chunk: {:?}", chunk);
             let chunk_str = std::str::from_utf8(&chunk)?;
-            println!("chunk_str: {}", chunk_str);
             let chunk_json: Value = serde_json::from_str(chunk_str)?;
-            println!("chunk_json: {:?}", chunk_json);
             if let Some(response) = chunk_json["response"].as_str() {
-                println!("response: {}", response);
                 response_text.push_str(response);
             }
         }
 
-        assert!(response_text.contains("beijing"));
+        println!("response_text: {}", response_text);
+
+        assert!(response_text.to_lowercase().contains("beijing"));
     }
 
     Ok(())

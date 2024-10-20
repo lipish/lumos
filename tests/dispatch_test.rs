@@ -5,6 +5,7 @@ use axum::response::Response;
 use futures_util::StreamExt;
 use lumos::config::Config;
 use lumos::ollama::dispatch;
+use lumos::structs::ollama::ChatType;
 use lumos::structs::ollama::{ChatRequest, Message};
 
 #[tokio::test]
@@ -37,7 +38,7 @@ async fn test_dispatch() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         };
 
-        let response: Response<Body> = dispatch(model_name, req.messages, provider, None, None)
+        let response: Response<Body> = dispatch(model_name, req.messages, provider, ChatType::Chat)
             .await
             .map_err(|e| axum::Error::new(e))?
             .into_response();

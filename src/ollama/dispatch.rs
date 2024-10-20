@@ -5,6 +5,7 @@ use axum::{
 };
 
 use crate::structs::config::Provider;
+use crate::structs::ollama::ChatType;
 use crate::structs::ollama::Message;
 use futures_util::Stream;
 use futures_util::StreamExt;
@@ -18,11 +19,13 @@ pub async fn dispatch(
     model: &str,
     messages: Vec<Message>,
     provider: &Provider,
-    fn_content: Option<Arc<dyn Fn(&str) -> Result<String, anyhow::Error> + Send + Sync>>,
-    fn_done: Option<Arc<dyn Fn() -> Result<(), anyhow::Error> + Send + Sync>>,
+    chat_type: ChatType,
 ) -> Result<impl IntoResponse, anyhow::Error> {
-    // Send request to the provider service and get the stream
-    let stream = send(model, messages, provider, fn_content, fn_done).await?;
+    // 将 model 转换为 String
+    let model = model.to_string();
+
+    // 发送请求到提供者服务并获取流
+    let stream = send(model, messages, provider, chat_type).await?;
 
     // Convert the stream to a Body
     let body = Body::from_stream(stream);
@@ -37,11 +40,10 @@ pub async fn dispatch(
 }
 
 async fn send(
-    model: &str,
+    model: String,
     messages: Vec<Message>,
     provider: &Provider,
-    fn_content: Option<Arc<dyn Fn(&str) -> Result<String, anyhow::Error> + Send + Sync>>,
-    fn_done: Option<Arc<dyn Fn() -> Result<(), anyhow::Error> + Send + Sync>>,
+    chat_type: ChatType,
 ) -> Result<impl Stream<Item = Result<String, anyhow::Error>> + Unpin, anyhow::Error> {
     let api_key = &provider.api_key;
     let messages = messages
@@ -53,7 +55,7 @@ async fn send(
             })
         })
         .collect::<Vec<_>>();
-    let model = &model;
+    let ollama_model = model.replace('-', ":");
 
     let client = Client::new();
 
@@ -114,26 +116,52 @@ async fn send(
         })
         .filter_map(|result| futures_util::future::ready(result.transpose())) // filter out the empty string and flatten the result and option, keep the async feature
         .map(move |result| {
-            let fn_content = fn_content.clone();
-            let fn_done = fn_done.clone();
             let done_flag = done_flag_clone.clone();
 
             result.and_then(|content| {
-                if done_flag.load(Ordering::SeqCst) {
-                    if let Some(ref fn_done) = fn_done {
-                        fn_done().map(|_| "[DONE]".to_string())
-                    } else {
-                        Ok("[DONE]".to_string())
-                    }
-                } else if let Some(ref fn_content) = fn_content {
-                    fn_content(&content)
+                if content.contains("[DONE]") {
+                    done_flag.store(true, Ordering::SeqCst);
+                    let done_json = json!({
+                        "model": ollama_model,
+                        "created_at": chrono::Utc::now().to_rfc3339(),
+                        "response": "",
+                        "done": true,
+                        "context": [1, 2, 3],
+                        "total_duration": 122112,
+                        "load_duration": 123112,
+                        "prompt_eval_count": 26,
+                        "prompt_eval_duration": 130079000,
+                        "eval_count": 259,
+                        "eval_duration": 2433122
+                    });
+                    Ok(done_json.to_string())
                 } else {
-                    Ok(content)
+                    let mut json_content = json!({
+                        "model": ollama_model,
+                        "created_at": chrono::Utc::now().to_rfc3339(),
+                        "done": false
+                    });
+
+                    if chat_type == ChatType::Chat {
+                        json_content["message"] = json!({
+                            "role": "assistant",
+                            "content": content,
+                            "images": null
+                        });
+                    } else {
+                        json_content["response"] = json!(content);
+                    }
+
+                    Ok(json_content.to_string())
                 }
             })
         })
         .take_while(|result| {
-            futures_util::future::ready(result.as_ref().map_or(true, |s| s != "[DONE]"))
+            futures_util::future::ready(
+                !result
+                    .as_ref()
+                    .map_or(false, |s| s.contains("\"done\": true")),
+            )
         });
 
     Ok(stream)

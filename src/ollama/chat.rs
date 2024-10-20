@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::ollama::dispatch;
 use crate::structs::app::AppState;
 use crate::structs::ollama::ChatRequest;
+use crate::structs::ollama::ChatType;
 
 pub async fn handler(
     State(state): State<Arc<AppState>>,
@@ -30,5 +31,5 @@ async fn chat(
     let provider = config.models.get(model).context("Provider not found")?;
 
     // Dispatch the request to the provider service and get the stream
-    dispatch(model, req.messages, provider, None, None).await
+    dispatch(model, req.messages, provider, ChatType::Chat).await
 }

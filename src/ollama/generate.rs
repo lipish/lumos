@@ -8,6 +8,7 @@ use std::sync::Arc;
 use crate::config::Config;
 use crate::ollama::dispatch;
 use crate::structs::app::AppState;
+use crate::structs::ollama::ChatType;
 use crate::structs::ollama::GenerateRequest;
 use crate::structs::ollama::Message;
 
@@ -40,5 +41,5 @@ async fn generate(
     }];
 
     // Dispatch the request to the provider service and get the stream
-    dispatch(model_name, messages, provider, None, None).await
+    dispatch(model_name, messages, provider, ChatType::Generate).await
 }

@@ -139,3 +139,24 @@ pub struct ChatOptions {
     pub temperature: Option<f32>,
     // Add other options as needed (e.g., top_p, n, etc.)
 }
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatType {
+    #[serde(rename = "generate")]
+    Generate,
+    #[serde(rename = "chat")]
+    Chat,
+}
+
+impl std::str::FromStr for ChatType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "generate" => Ok(ChatType::Generate),
+            "chat" => Ok(ChatType::Chat),
+            _ => Err(anyhow::anyhow!("无效的聊天类型: {}", s)),
+        }
+    }
+}
