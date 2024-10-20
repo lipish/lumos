@@ -55,7 +55,7 @@ async fn send(
             })
         })
         .collect::<Vec<_>>();
-    let ollama_model = model.replace('-', ":");
+    let ollama_model = model.replacen('-', ":", 1);
 
     let client = Client::new();
 

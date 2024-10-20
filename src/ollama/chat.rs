@@ -24,7 +24,17 @@ async fn chat(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ChatRequest>,
 ) -> Result<impl IntoResponse, anyhow::Error> {
-    let model = &state.model_name;
+    let model = &req.model.replacen(":", "-", 1); // deepseek:chat -> deepseek-chat
+
+    // check model name if match in app state
+    if model != &state.model_name {
+        return Err(anyhow::anyhow!(
+            "Model name not match in app state:{} != {}",
+            model,
+            state.model_name
+        ));
+    }
+
     let config_path = &state.config_path;
 
     let config = Config::from_file(config_path).context("Failed to load config")?;

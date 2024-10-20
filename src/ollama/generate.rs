@@ -25,14 +25,21 @@ async fn generate(
     State(state): State<Arc<AppState>>,
     Json(req): Json<GenerateRequest>,
 ) -> Result<impl IntoResponse, anyhow::Error> {
-    let model_name = &state.model_name;
+    let model = &req.model.replacen(":", "-", 1); // deepseek:chat -> deepseek-chat
+
+    // check model name if match in app state
+    if model != &state.model_name {
+        return Err(anyhow::anyhow!(
+            "Model name not match in app state:{} != {}",
+            model,
+            state.model_name
+        ));
+    }
+
     let config_path = &state.config_path;
 
     let config = Config::from_file(config_path).context("Failed to load config")?;
-    let provider = config
-        .models
-        .get(model_name)
-        .context("Provider not found")?;
+    let provider = config.models.get(model).context("Provider not found")?;
 
     let messages = vec![Message {
         role: "user".to_string(),
@@ -41,5 +48,5 @@ async fn generate(
     }];
 
     // Dispatch the request to the provider service and get the stream
-    dispatch(model_name, messages, provider, ChatType::Generate).await
+    dispatch(model, messages, provider, ChatType::Generate).await
 }
