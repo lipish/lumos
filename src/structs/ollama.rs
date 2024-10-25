@@ -29,7 +29,7 @@ pub struct GenerateRequest {
     #[serde(default, skip_serializing_if = "is_false")] // Treat missing as false
     pub raw: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_alive: Option<String>,
+    pub keep_alive: Option<Value>,
 }
 
 impl Default for GenerateRequest {
@@ -64,7 +64,7 @@ pub struct ChatRequest {
     #[serde(default = "default_stream")]
     pub stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub keep_alive: Option<String>,
+    pub keep_alive: Option<Value>,
 }
 
 impl Default for ChatRequest {

@@ -28,9 +28,11 @@ async fn spawn_app(app_state: Arc<AppState>) {
 
 #[tokio::test]
 async fn test_generate() -> Result<()> {
+    let model_name = "glm-4-plus";
+
     // Setup app state for testing
     let app_state = Arc::new(AppState {
-        model_name: "deepseek-chat".to_string(),
+        model_name: model_name.to_string(),
         config_path: "keys.toml".to_string(),
     });
 
@@ -40,14 +42,15 @@ async fn test_generate() -> Result<()> {
 
     let test_cases = vec![(
         GenerateRequest {
-            model: "deepseek:chat".to_string(),
+            model: model_name.replacen("-", ":", 1).to_string(),
             prompt: Some("What is the capital of China?".to_string()),
+            keep_alive: Some(serde_json::Value::Number(serde_json::Number::from(-1))),
             ..Default::default()
         },
         StatusCode::OK,
     )];
 
-    let addr = "127.0.0.1:11434";
+    let addr = "localhost:11434";
 
     for (req, _) in test_cases {
         let request_body = serde_json::to_vec(&req)?;
@@ -80,8 +83,10 @@ async fn test_generate() -> Result<()> {
 
 #[tokio::test]
 async fn test_chat() -> Result<()> {
+    let model_name = "glm-4-plus";
+
     let app_state = Arc::new(AppState {
-        model_name: "glm-4-plus".to_string(),
+        model_name: model_name.to_string(),
         config_path: "keys.toml".to_string(),
     });
 
@@ -91,7 +96,7 @@ async fn test_chat() -> Result<()> {
 
     let test_cases = vec![(
         ChatRequest {
-            model: "glm:4-plus".to_string(),
+            model: model_name.replacen(":", "-", 1).to_string(),
             messages: vec![Message {
                 role: "user".to_string(),
                 content: "What is the capital of China?".to_string(),
@@ -102,7 +107,7 @@ async fn test_chat() -> Result<()> {
         StatusCode::OK,
     )];
 
-    let addr = "127.0.0.1:11434";
+    let addr = "localhost:11434";
 
     for (req, _) in test_cases {
         let request_body = serde_json::to_vec(&req)?;

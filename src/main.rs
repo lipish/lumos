@@ -17,7 +17,7 @@ struct Cli {
     model_name: String,
 
     /// Server host address
-    #[arg(short, long, default_value = "localhost")]
+    #[arg(long, default_value = "localhost")]
     host: String,
 
     /// Server port

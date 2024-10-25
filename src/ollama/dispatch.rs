@@ -65,6 +65,10 @@ async fn send(
         "stream": true
     });
 
+    println!("request_body:{}", request_body);
+    println!("provider.url:{}", provider.url);
+    println!("api_key:{}", api_key);
+
     let response = client
         .post(&provider.url)
         .header("Content-Type", "application/json")
@@ -73,6 +77,8 @@ async fn send(
         .send()
         .await?;
 
+    println!("response.status:{}", response.status());
+
     if !response.status().is_success() {
         return Err(anyhow::anyhow!("API请求失败: {}", response.status()));
     }
@@ -80,6 +86,7 @@ async fn send(
     let done_flag = Arc::new(AtomicBool::new(false));
     let done_flag_clone = done_flag.clone();
 
+    let buffer = String::new();
     let stream = response
         .bytes_stream()
         .map(|result| -> Result<String, anyhow::Error> {
@@ -89,28 +96,54 @@ async fn send(
         })
         .flat_map(move |line_result| {
             let done_flag = done_flag.clone();
+            let buffer = buffer.clone();
             futures_util::stream::iter(line_result.map(move |line| {
-                if line.trim() == "data: [DONE]" {
-                    done_flag.store(true, Ordering::SeqCst);
-                    Ok(Some("".to_string())) // keep the stream alive
-                } else if line.starts_with("data: ") {
-                    let json_str = line.trim_start_matches("data: ");
-                    match serde_json::from_str::<Value>(json_str) {
-                        Ok(json) => {
-                            let content = json["choices"][0]["delta"]["content"]
-                                .as_str()
-                                .unwrap_or("")
-                                .to_string();
-                            if content.is_empty() {
-                                Ok(None)
-                            } else {
-                                Ok(Some(content))
+                let mut buffer = buffer.clone();
+                buffer.push_str(&line);
+
+                if buffer.ends_with("\n\n") {
+                    // remove the last "\n\n"
+                    buffer.pop();
+                    buffer.pop();
+
+                    let full_line = std::mem::take(&mut buffer);
+
+                    // 将full_line按"\n\n"分割成多个数据块
+                    let data_blocks: Vec<&str> = full_line.split("\n\n").collect();
+
+                    for block in data_blocks {
+                        let trimmed_block = block.trim();
+                        if trimmed_block == "data: [DONE]" {
+                            done_flag.store(true, Ordering::SeqCst);
+                        } else if trimmed_block.starts_with("data: ") {
+                            let json_str = trimmed_block.trim_start_matches("data: ");
+                            match serde_json::from_str::<Value>(json_str) {
+                                Ok(json) => {
+                                    let content = json["choices"][0]["delta"]["content"]
+                                        .as_str()
+                                        .unwrap_or("")
+                                        .to_string();
+                                    if !content.is_empty() {
+                                        return Ok(Some(content));
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("JSON解析错误: {}", e);
+                                    // ignore the error
+                                }
                             }
+                        } else {
+                            println!("未知数据块: {}", trimmed_block);
                         }
-                        Err(_) => Ok(None),
+                    }
+                    // 如果所有块都处理完毕但没有返回内容
+                    if done_flag.load(Ordering::SeqCst) {
+                        Ok(Some("".to_string())) // 保持流活跃
+                    } else {
+                        Ok(None) // 没有内容可返回
                     }
                 } else {
-                    Ok(Some("".to_string())) // keep the stream alive
+                    Ok(None)
                 }
             }))
         })
@@ -119,8 +152,8 @@ async fn send(
             let done_flag = done_flag_clone.clone();
 
             result.and_then(|content| {
-                if content.contains("[DONE]") {
-                    done_flag.store(true, Ordering::SeqCst);
+                if done_flag.load(Ordering::SeqCst) {
+                    // end of stream
                     let done_json = json!({
                         "model": ollama_model,
                         "created_at": chrono::Utc::now().to_rfc3339(),
@@ -134,7 +167,13 @@ async fn send(
                         "eval_count": 259,
                         "eval_duration": 2433122
                     });
-                    Ok(done_json.to_string())
+                    println!("done_json:{}", done_json);
+
+                    // add "\n" to the end of the string
+                    let mut done_json_str = done_json.to_string();
+                    done_json_str.push_str("\n");
+
+                    Ok(done_json_str)
                 } else {
                     let mut json_content = json!({
                         "model": ollama_model,
@@ -152,7 +191,13 @@ async fn send(
                         json_content["response"] = json!(content);
                     }
 
-                    Ok(json_content.to_string())
+                    println!("json_content:{}", json_content);
+
+                    // add "\n" to the end of the string
+                    let mut json_content_str = json_content.to_string();
+                    json_content_str.push_str("\n");
+
+                    Ok(json_content_str)
                 }
             })
         })

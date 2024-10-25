@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt;
 use std::str::FromStr;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone, Copy)]
@@ -8,6 +9,15 @@ pub enum ProviderName {
     Zhipu,
     #[serde(rename = "deepseek")]
     DeepSeek,
+}
+
+impl fmt::Display for ProviderName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProviderName::Zhipu => write!(f, "zhipu"),
+            ProviderName::DeepSeek => write!(f, "deepseek"),
+        }
+    }
 }
 
 impl FromStr for ProviderName {
