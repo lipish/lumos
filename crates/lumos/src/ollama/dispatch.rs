@@ -58,10 +58,6 @@ async fn send(
     // 将模型名称中的 "-" 替换为 ":"
     let model = model.replacen('-', ":", 1);
 
-    println!("request_body:{}", request_body);
-    println!("provider.url:{}", provider.url);
-    println!("api_key:{}", api_key);
-
     let response = client
         .post(&provider.url)
         .header("Content-Type", "application/json")
