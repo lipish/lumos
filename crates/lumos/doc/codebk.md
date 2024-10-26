@@ -1,3 +1,4 @@
+```rust
 use anyhow::Result;
 use axum::{
     body::Body,
@@ -96,10 +97,11 @@ async fn send(
         })
         .flat_map(move |line_result| {
             let done_flag = done_flag.clone();
-            let buffer = buffer.clone();
             futures_util::stream::iter(line_result.map(move |line| {
                 let mut buffer = buffer.clone();
                 buffer.push_str(&line);
+
+             
 
                 if buffer.ends_with("\n\n") {
                     // remove the last "\n\n"
@@ -167,11 +169,10 @@ async fn send(
                         "eval_count": 259,
                         "eval_duration": 2433122
                     });
-                    println!("done_json:{}", done_json);
 
                     // add "\n" to the end of the string
                     let mut done_json_str = done_json.to_string();
-                    done_json_str.push_str("\n");
+                    done_json_str.push_str("\n\n");
 
                     Ok(done_json_str)
                 } else {
@@ -190,8 +191,6 @@ async fn send(
                     } else {
                         json_content["response"] = json!(content);
                     }
-
-                    println!("json_content:{}", json_content);
 
                     // add "\n" to the end of the string
                     let mut json_content_str = json_content.to_string();
