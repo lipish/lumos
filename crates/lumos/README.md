@@ -1,2 +1,0 @@
-# lumos
-ai copilot

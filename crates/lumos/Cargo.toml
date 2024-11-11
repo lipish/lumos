@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-http_client.workspace = true
 clap = { version = "4.5.20", features = ["derive"] }
 axum = "0.7.7"
 tokio = { version = "1.40.0", features = ["full"] }

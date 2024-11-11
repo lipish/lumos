@@ -12,13 +12,13 @@ use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use crate::structs::config::Provider;
+use crate::structs::config::Model;
 use crate::structs::ollama::{ChatType, Message};
 
 pub async fn dispatch(
     model: &str,
     messages: Vec<Message>,
-    provider: &Provider,
+    provider: &Model,
     chat_type: ChatType,
 ) -> Result<impl IntoResponse, anyhow::Error> {
     let stream = send(model.to_string(), messages, provider, chat_type).await?;
@@ -33,7 +33,7 @@ pub async fn dispatch(
 async fn send(
     model: String,
     messages: Vec<Message>,
-    provider: &Provider,
+    provider: &Model,
     chat_type: ChatType,
 ) -> Result<impl Stream<Item = Result<String, anyhow::Error>> + Unpin + Send, anyhow::Error> {
     let api_key = &provider.api_key;
@@ -66,10 +66,10 @@ async fn send(
         .send()
         .await?;
 
-    println!("response.status:{}", response.status());
-
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!("API请求失败: {}", response.status()));
+    let status = response.status();
+    if !status.is_success() {
+        let error_message = response.text().await?;
+        return Err(anyhow::anyhow!("API请求失败: {}:{}", status, error_message));
     }
 
     let done_flag = Arc::new(AtomicBool::new(false));

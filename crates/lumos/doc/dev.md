@@ -30,3 +30,11 @@ cargo test deepseek
 ```bash
 cargo test --package lumos --test service_test
 ```
+
+
+## How to run app
+
+Run auto reload
+```bash
+cargo watch -x 'run glm-4-plus'
+```

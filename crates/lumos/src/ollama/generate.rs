@@ -39,7 +39,7 @@ async fn generate(
     let config_path = &state.config_path;
 
     let config = Config::from_file(config_path).context("Failed to load config")?;
-    let provider = config.models.get(model).context("Provider not found")?;
+    let provider = config.get_model(model).context("Provider not found")?;
 
     let messages = vec![Message {
         role: "user".to_string(),

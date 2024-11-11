@@ -1,10 +1,10 @@
 [workspace]
 members = ["crates/*"]
 default-members = ["crates/lumos"]
+resolver = "2"
 
 [workspace.dependencies]
 lumos = { path = "crates/lumos" }
-http_client = { path = "crates/http_client" }
 
 anyhow = "1.0.89"
 serde = { version = "1.0.210", features = ["derive"] }

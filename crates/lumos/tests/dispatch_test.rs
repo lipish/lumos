@@ -22,7 +22,7 @@ async fn test_dispatch() -> Result<(), Box<dyn std::error::Error>> {
 
     for (model_name, prompt, expected_substring) in test_cases {
         let provider = config
-            .models
+            .models()
             .get(model_name)
             .context(format!("未找到模型提供者: {}", model_name))?;
 

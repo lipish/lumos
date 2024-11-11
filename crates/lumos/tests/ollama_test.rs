@@ -1,7 +1,6 @@
 // tests/ollama_test.rs
 
 use anyhow::Result;
-use axum::http::StatusCode;
 use futures_util::StreamExt;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;

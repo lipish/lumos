@@ -1,4 +1,4 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
@@ -9,6 +9,8 @@ pub enum ProviderName {
     Zhipu,
     #[serde(rename = "deepseek")]
     DeepSeek,
+    #[serde(rename = "xinference")]
+    Xinference,
 }
 
 impl fmt::Display for ProviderName {
@@ -16,6 +18,7 @@ impl fmt::Display for ProviderName {
         match self {
             ProviderName::Zhipu => write!(f, "zhipu"),
             ProviderName::DeepSeek => write!(f, "deepseek"),
+            ProviderName::Xinference => write!(f, "xinference"),
         }
     }
 }
@@ -27,6 +30,7 @@ impl FromStr for ProviderName {
         match s.to_lowercase().as_str() {
             "zhipu" => Ok(ProviderName::Zhipu),
             "deepseek" => Ok(ProviderName::DeepSeek),
+            "xinference" => Ok(ProviderName::Xinference),
 
             _ => Err(anyhow::anyhow!("Invalid provider name: {}", s)),
         }
@@ -34,23 +38,9 @@ impl FromStr for ProviderName {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Provider {
-    #[serde(deserialize_with = "deserialize_provider_name", alias = "provider")]
-    pub name: ProviderName,
+pub struct Model {
+    pub model_name: String,
+    pub provider: ProviderName,
     pub api_key: String,
     pub url: String,
-}
-
-fn deserialize_provider_name<'de, D>(deserializer: D) -> Result<ProviderName, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let provider_str = String::deserialize(deserializer)?;
-    ProviderName::from_str(&provider_str).map_err(serde::de::Error::custom)
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Model {
-    name: String,
-    provider_config: Provider,
 }
