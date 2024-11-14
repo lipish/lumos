@@ -1,5 +1,5 @@
 # lumos
-Ollama 代理，通过 Ollama 接口，调用 GLM、Deepseek、Xinference 等后台大模型服务
+Ollama 代理。 通过 Ollama 接口，调用 GLM、Deepseek、Xinference 等后台大模型服务
 
 ## 使用说明
 
